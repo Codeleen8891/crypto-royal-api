@@ -1,20 +1,24 @@
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 
-const transporter = nodemailer.createTransport({
-  // host: "gmail", // change if using Outlook/Yahoo/etc
-  // port: 465, // 465 (secure) or 587 (TLS)
-  // secure: true, // true for 465, false for 587
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER, // your email
-    pass: process.env.EMAIL_PASS, // your email password or app password
-  },
-  tls: {
-    rejectUnauthorized: false, // for self-signed certs in dev
-  },
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Missing");
+async function sendEmail(to, subject, text, html) {
+  const msg = {
+    to,
+    from: process.env.EMAIL_USER, // must be your verified Gmail in SendGrid
+    subject,
+    text,
+    html,
+    replyTo: "cryptoroyal2223@gmail.com",
+  };
 
-module.exports = transporter;
+  try {
+    await sgMail.send(msg);
+    console.log("✅ Email sent to", to);
+  } catch (err) {
+    console.error("❌ Email failed", err.response?.body || err);
+    throw new Error("Email sending failed");
+  }
+}
+
+module.exports = { sendEmail };

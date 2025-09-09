@@ -57,17 +57,16 @@ exports.register = async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 mins
     });
 
-    // Only send real email if NOT in test mode
-    if (process.env.NODE_ENV !== "test") {
-      await transporter.sendMail({
-        from: `<${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: "Verify your account",
-        text: `Your OTP is ${otpCode}`,
-      });
-    } else {
-      console.log(`📨 Skipping email send in test mode. OTP: ${otpCode}`);
-    }
+    const html = `
+      <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+        <img src="https://i.ibb.co/FnzyjD4/crypto-royal-logo.png" alt="Crypto Royal" width="80"/>
+        <h2 style="color: #4b0082;">Welcome to Crypto Royal</h2>
+        <p>Your OTP code is:</p>
+        <h1 style="color: #ff6600;">${otpCode}</h1>
+        <p>This code expires in 10 minutes.</p>
+      </div>
+`;
+    await sendEmail(email, "Verify your Crypto Royal account", html);
 
     res.status(201).json({ message: "OTP sent to email. Please verify." });
   } catch (error) {
@@ -141,13 +140,18 @@ exports.forgotPassword = async (req, res) => {
       expiresIn: "15m",
     });
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
-
-    await transporter.sendMail({
-      from: `"MyApp" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Password Reset",
-      text: `Click this link to reset password: ${resetUrl}`,
-    });
+    const html = `
+      <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+        <img src="https://i.ibb.co/FnzyjD4/crypto-royal-logo.png" alt="Crypto Royal" width="80"/>
+        <h2 style="color: #4b0082;">Reset Your Password</h2>
+        <p>Click the button below to reset your password:</p>
+        <a href="${resetUrl}" style="background:#4b0082;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+          Reset Password
+        </a>
+        <p>This link expires in 15 minutes.</p>
+      </div>
+    `;
+    await sendEmail(email, "Crypto Royal - Password Reset", html);
 
     res.json({ message: "Password reset link sent" });
   } catch (error) {
