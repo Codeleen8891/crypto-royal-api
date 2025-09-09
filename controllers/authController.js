@@ -179,11 +179,6 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// ✅ Verify Transaction PIN
-const sendEmail = require("../lib/sendEmail");
-const Otp = require("../models/Otp");
-const User = require("../models/User");
-
 exports.resendOtp = async (req, res) => {
   try {
     const { email, type = "register" } = req.body;
