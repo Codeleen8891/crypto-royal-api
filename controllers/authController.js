@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Otp = require("../models/Otp");
-const transporter = require("../config/nodemailer");
+const { sendEmail } = require("../config/sendEmail");
 
 // Generate JWT
 const generateToken = (id) => {
@@ -180,56 +180,62 @@ exports.resetPassword = async (req, res) => {
 };
 
 // ✅ Verify Transaction PIN
+const sendEmail = require("../lib/sendEmail");
+const Otp = require("../models/Otp");
+const User = require("../models/User");
+
 exports.resendOtp = async (req, res) => {
   try {
     const { email, type = "register" } = req.body;
-    // type can be "register" or "forgotPassword"
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    // Check based on type
-    if (type === "register") {
-      if (user.isVerified) {
-        return res.status(400).json({ message: "User already verified" });
-      }
+    // If registering but already verified
+    if (type === "register" && user.isVerified) {
+      return res.status(400).json({ message: "User already verified" });
     }
 
     // Generate new OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000);
 
-    // Store OTP in DB with purpose
+    // Save or update OTP in DB
     await Otp.findOneAndUpdate(
       { email },
       {
         otp: otpCode,
-        purpose: type, // save if it's for register or forgotPassword
+        purpose: type,
         expiresAt: Date.now() + 10 * 60 * 1000,
       },
       { upsert: true, new: true }
     );
 
-    // Send OTP via email
+    // Subject + HTML email
     const subject =
       type === "forgotPassword"
         ? "Password Reset OTP"
-        : "Resend OTP - Verify your account";
+        : "Verify Your Account - New OTP";
 
-    const text =
-      type === "forgotPassword"
-        ? `Your OTP to reset your password is ${otpCode}`
-        : `Your new OTP for verification is ${otpCode}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+        <h2 style="color:#4b0082;">Crypto Royal</h2>
+        <p>
+          ${
+            type === "forgotPassword"
+              ? "You requested a password reset. Use the OTP below:"
+              : "Here is your new OTP to verify your account:"
+          }
+        </p>
+        <h1 style="color:#ff6600; letter-spacing: 3px;">${otpCode}</h1>
+        <p>This OTP will expire in 10 minutes.</p>
+      </div>
+    `;
 
-    await transporter.sendMail({
-      from: `<${process.env.EMAIL_USER}>`,
-      to: email,
-      subject,
-      text,
-    });
+    await sendEmail(email, subject, html);
 
     res.json({ message: `New OTP sent to email for ${type}` });
   } catch (error) {
-    console.error(error);
+    console.error("❌ resendOtp error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

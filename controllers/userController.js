@@ -3,7 +3,7 @@ const User = require("../models/User");
 const Message = require("../models/ChatMessage");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const sendEmail = require("../lib/sendEmail"); // ✅ use SendGrid instead of nodemailer
+const { sendEmail } = require("../config/sendEmail"); // ✅ use SendGrid instead of nodemailer
 
 // Get profile
 exports.getProfile = async (req, res) => {
