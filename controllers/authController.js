@@ -36,13 +36,24 @@ exports.register = async (req, res) => {
     // Assign unique referralCode (last 6 chars of _id)
     user.referralCode = user._id.toString().slice(-6).toUpperCase();
 
-    // If referralCode is provided → link to referrer
+    // ✅ Handle referral if provided
     if (referralCode) {
       const referrer = await User.findOne({ referralCode });
+
       if (referrer) {
+        // 🚫 Prevent self-referral
+        if (referrer._id.toString() === user._id.toString()) {
+          return res
+            .status(400)
+            .json({ message: "You cannot use your own referral code" });
+        }
+
         user.referredBy = referrer._id;
         referrer.referrals.push(user._id);
-        referrer.balance = (referrer.balance || 0) + 10; // reward
+
+        // optional reward
+        referrer.balance = (referrer.balance || 0) + 10;
+
         await referrer.save();
       }
     }
@@ -65,12 +76,12 @@ exports.register = async (req, res) => {
         <h1 style="color: #ff6600;">${otpCode}</h1>
         <p>This code expires in 10 minutes.</p>
       </div>
-`;
+    `;
     await sendEmail(email, "Verify your Crypto Royal account", html);
 
     res.status(201).json({ message: "OTP sent to email. Please verify." });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Register error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

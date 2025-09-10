@@ -6,11 +6,21 @@ const crypto = require("crypto");
 const { sendEmail } = require("../config/sendEmail"); // ✅ use SendGrid instead of nodemailer
 
 // Get profile
+// controllers/userController.js
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password -pin");
-    res.json(user);
+    const user = await User.findById(req.user.id)
+      .select("-password -pin")
+      .populate("referrals", "name email photo"); // include referrals
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      ...user.toObject(),
+      referralsCount: user.referrals.length,
+    });
   } catch (error) {
+    console.error("❌ getProfile error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -46,7 +56,7 @@ exports.getUserStats = async (req, res) => {
     const userId = req.user.id;
     const user = await User.findById(userId);
     const shares = await User.countDocuments();
-    res.json({ referrals: user.referrals, shares });
+    res.json({ referrals: user.referrals.length, shares });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -192,5 +202,25 @@ exports.getUserById = async (req, res) => {
   } catch (err) {
     console.error("❌ Get user by ID error:", err);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+// @access Private
+exports.getReferralInfo = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("referrals", "name email photo") // show referred users
+      .select("referralCode referrals");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      referralCode: user.referralCode,
+      referrals: user.referrals,
+      referralsCount: user.referrals.length,
+    });
+  } catch (error) {
+    console.error("❌ getReferralInfo error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

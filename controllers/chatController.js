@@ -1,8 +1,7 @@
-// controllers/chatController.js
-const ChatMessage = require("../models/ChatMessage");
-const User = require("../models/User");
-const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
+const ChatMessage = require("../models/ChatMessage");
 const { getIO } = require("../socket");
 
 const ADMIN_ID = process.env.ADMIN_ID; // must be set to real User _id
@@ -75,23 +74,45 @@ exports.getMessages = async (req, res) => {
   }
 };
 
-// 🗑️ Remove user (optional: delete messages too)
-// exports.removeUser = async (req, res) => {
-//   try {
-//     const { userId } = req.params;
+// DELETE /chat/message/:id
+exports.deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id; // 👈 from auth middleware
 
-//     await User.findByIdAndDelete(userId);
-//     await ChatMessage.deleteMany({
-//       $or: [{ sender: userId }, { receiver: userId }],
-//     });
+    const msg = await ChatMessage.findById(id);
+    if (!msg) return res.status(404).json({ message: "Message not found" });
 
-//     getIO().to(userId).emit("removed");
-//     res.json({ success: true });
-//   } catch (err) {
-//     console.error("❌ removeUser error:", err);
-//     res.status(500).json({ error: "Failed to remove user" });
-//   }
-// };
+    // 👮 Only sender or admin can delete
+    if (msg.sender.toString() !== userId && !req.user.isAdmin) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // If it has a file, remove from disk
+    if (msg.fileUrl) {
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "uploads",
+        path.basename(msg.fileUrl)
+      );
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // 🔹 Soft delete instead of removing
+    msg.message = "This message was deleted";
+    msg.fileUrl = "";
+    msg.type = "deleted";
+    await msg.save();
+
+    return res.json({ message: "Message deleted successfully", msg });
+  } catch (err) {
+    console.error("deleteMessage error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 // ✅ Mark messages as read
 exports.markMessagesRead = async (req, res) => {

@@ -4,7 +4,9 @@ const {
   getMessages,
   uploadMessageFile,
   markMessagesRead,
+  deleteMessage,
 } = require("../controllers/chatController");
+const { protect } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
@@ -21,5 +23,7 @@ router.get("/:userId", getMessages);
 
 // routes/chatRoutes.js
 router.post("/mark-read/:userId", markMessagesRead);
+
+router.delete("/message/:id", protect, deleteMessage);
 
 module.exports = router;

@@ -1,14 +1,13 @@
 const sgMail = require("@sendgrid/mail");
-
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-async function sendEmail(to, subject, text, html) {
+async function sendEmail(to, subject, html) {
   const msg = {
     to,
-    from: process.env.EMAIL_USER, // must be your verified Gmail in SendGrid
+    from: process.env.EMAIL_USER, // must be verified sender in SendGrid
     subject,
-    text,
-    html,
+    text: html.replace(/<[^>]+>/g, ""), // fallback plain text
+    html, // real HTML
     replyTo: "cryptoroyal2223@gmail.com",
   };
 
